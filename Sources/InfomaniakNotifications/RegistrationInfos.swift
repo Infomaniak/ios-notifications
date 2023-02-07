@@ -32,4 +32,9 @@ public struct RegistrationInfos: Codable {
     var model = "Mac"
     var name = ProcessInfo().hostName
     #endif
+    #if DEBUG
+    var isSandboxed = true
+    #else
+    var isSandboxed = false
+    #endif
 }
