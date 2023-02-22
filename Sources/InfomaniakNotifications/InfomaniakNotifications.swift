@@ -50,17 +50,23 @@ actor UserNotificationTokenStore {
     func apnsTokenForUser(id: Int) -> String? {
         return registeredUsers["\(id)"]
     }
+
+    func removeToken(for userId: Int) {
+        registeredUsers["\(userId)"] = nil
+        UserDefaults.standard.set(registeredUsers, forKey: registeredUserAPNSTokensKey)
+    }
 }
 
 public protocol InfomaniakNotifiable {
     /// Register the user for remote notifications using the given token
     func registerUserForRemoteNotificationsIfNeeded(tokenData: Data, userApiFetcher: ApiFetcher) async
-
+    /// After logging out manually remove the token for a given user
+    func removeStoredToken(for userId: Int) async
 }
 
 public class InfomaniakNotifications: InfomaniakNotifiable {
     let userNotificationTokensStore = UserNotificationTokenStore()
-    
+
     public init() {}
 
     func registerUserForRemoteNotificationsIfNeeded(apnsToken: String, userApiFetcher: ApiFetcher) async {
@@ -88,5 +94,9 @@ public class InfomaniakNotifications: InfomaniakNotifiable {
         let apnsToken = tokenParts.joined()
 
         await registerUserForRemoteNotificationsIfNeeded(apnsToken: apnsToken, userApiFetcher: userApiFetcher)
+    }
+
+    public func removeStoredToken(for userId: Int) async {
+        await userNotificationTokensStore.removeToken(for: userId)
     }
 }
