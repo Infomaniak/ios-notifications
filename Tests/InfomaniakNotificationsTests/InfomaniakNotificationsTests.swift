@@ -61,7 +61,7 @@ final class InfomaniakNotificationsTests: XCTestCase {
     }
 
     func testRegisterDeviceToken() async throws {
-        let notificationsService = InfomaniakNotification()
+        let notificationsService = InfomaniakNotifications()
         await notificationsService.registerUserForRemoteNotificationsIfNeeded(apnsToken: InfomaniakNotificationsTests.fakeAPNSToken,
                                                                               userApiFetcher: apiFetcher)
         let registeredToken = await notificationsService.userNotificationTokensStore
