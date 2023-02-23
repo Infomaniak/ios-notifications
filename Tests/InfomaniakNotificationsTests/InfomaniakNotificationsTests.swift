@@ -40,6 +40,7 @@ final class InfomaniakNotificationsTests: XCTestCase {
 
     private var apiFetcher: ApiFetcher!
     private static let fakeAPNSToken = "aabbcc"
+    private static let fakeAPNSTokenData = fakeAPNSToken.data(using: .utf8)!
 
     override class func setUp() {
         let factory = Factory(type: InfomaniakNetworkLogin.self) { _, _ in
@@ -55,17 +56,37 @@ final class InfomaniakNotificationsTests: XCTestCase {
     }
 
     func testApiRegistration() async throws {
-        let registrationInfos = RegistrationInfos(token: InfomaniakNotificationsTests.fakeAPNSToken)
+        let registrationInfos = RegistrationInfos(token: InfomaniakNotificationsTests.fakeAPNSToken, topics: ["test1"])
         let registrationResult = try await apiFetcher.registerForNotifications(registrationInfos: registrationInfos)
         XCTAssertTrue(registrationResult, "Registration shouldn't fail")
     }
 
     func testRegisterDeviceToken() async throws {
         let notificationsService = InfomaniakNotifications()
-        await notificationsService.registerUserForRemoteNotificationsIfNeeded(apnsToken: InfomaniakNotificationsTests.fakeAPNSToken,
-                                                                              userApiFetcher: apiFetcher)
-        let registeredToken = await notificationsService.userNotificationTokensStore
-            .apnsTokenForUser(id: apiFetcher.currentToken!.userId)
+        await notificationsService.updateRemoteNotificationsTokenIfNeeded(tokenData: InfomaniakNotificationsTests.fakeAPNSTokenData,
+                                                                          userApiFetcher: apiFetcher)
+        let registeredToken = await notificationsService.userSubscriptionsStore
+            .subscriptionForUser(id: apiFetcher.currentToken!.userId)
         XCTAssertNotNil(registeredToken, "Registered token shouldn't be nil")
+    }
+    
+    func testUpdateTopics() async throws {
+        let notificationsService = InfomaniakNotifications()
+        let testTopics = ["topic1", "topic2"]
+        await notificationsService.removeStoredTokenFor(userId: apiFetcher.currentToken!.userId)
+        
+        await notificationsService.updateTopicsIfNeeded(testTopics, userApiFetcher: apiFetcher)
+        let storedSubscription = await notificationsService.userSubscriptionsStore
+            .subscriptionForUser(id: apiFetcher.currentToken!.userId)
+        XCTAssertNotNil(storedSubscription, "Stored subscription shouldn't be null")
+        XCTAssertEqual(storedSubscription?.topics, testTopics, "Stored topics are not matching")
+        XCTAssertTrue(storedSubscription?.token.isEmpty == true, "Stored token should be empty")
+        await notificationsService.updateRemoteNotificationsTokenIfNeeded(tokenData: InfomaniakNotificationsTests.fakeAPNSTokenData,
+                                                                          userApiFetcher: apiFetcher)
+        let storedSubscriptionWithToken = await notificationsService.userSubscriptionsStore
+            .subscriptionForUser(id: apiFetcher.currentToken!.userId)
+        XCTAssertNotNil(storedSubscriptionWithToken, "Stored subscription shouldn't be null")
+        XCTAssertEqual(storedSubscriptionWithToken?.topics, testTopics, "Stored topics are not matching")
+        XCTAssertTrue(storedSubscriptionWithToken?.token.isEmpty == false, "Stored token shouldn't be nil")
     }
 }

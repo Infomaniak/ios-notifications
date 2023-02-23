@@ -16,26 +16,9 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#if canImport(UIKit)
-import UIKit
-#else
 import Foundation
-#endif
 
-public struct RegistrationInfos: Codable {
-    var os = "ios"
-    var token: String
-    #if canImport(UIKit)
-    var model = UIDevice().model
-    var name = UIDevice().name
-    #else
-    var model = "Mac"
-    var name = ProcessInfo().hostName
-    #endif
-    #if DEBUG
-    var isSandboxed = true
-    #else
-    var isSandboxed = false
-    #endif
-    var topics: [String]
+public struct Subscription: Codable {
+    public let token: String
+    public let topics: [String]
 }

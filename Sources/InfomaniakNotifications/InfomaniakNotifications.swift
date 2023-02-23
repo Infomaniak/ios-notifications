@@ -32,71 +32,113 @@ public extension ApiFetcher {
     }
 }
 
-actor UserNotificationTokenStore {
-    private let registeredUserAPNSTokensKey = "registeredUserAPNSTokens"
-    var registeredUsers = [String: String]()
+actor UserSubscriptionStore {
+    private let registeredUsersKey = "registeredUsers"
+    private let jsonEncoder = JSONEncoder()
+    var registeredUsers = [String: Subscription]()
 
     init() {
-        if let registeredUsers = UserDefaults.standard.dictionary(forKey: registeredUserAPNSTokensKey) as? [String: String] {
-            self.registeredUsers = registeredUsers
+        guard let registeredUsersData = UserDefaults.standard.dictionary(forKey: registeredUsersKey) as? [String: Data]
+        else { return }
+        let jsonDecoder = JSONDecoder()
+
+        for registeredUserData in registeredUsersData {
+            if let registeredUser = try? jsonDecoder.decode(Subscription.self, from: registeredUserData.value) {
+                registeredUsers[registeredUserData.key] = registeredUser
+            }
         }
     }
 
-    func registerUser(id: Int, apnsToken: String) {
-        registeredUsers["\(id)"] = apnsToken
-        UserDefaults.standard.set(registeredUsers, forKey: registeredUserAPNSTokensKey)
+    func saveSubscriptionForUser(id: Int, subscription: Subscription) {
+        registeredUsers["\(id)"] = subscription
+        var rawRegisteredUsers = [String: Data]()
+        for registeredUser in registeredUsers {
+            rawRegisteredUsers[registeredUser.key] = try? jsonEncoder.encode(registeredUser.value)
+        }
+        UserDefaults.standard.set(rawRegisteredUsers, forKey: registeredUsersKey)
     }
 
-    func apnsTokenForUser(id: Int) -> String? {
+    func subscriptionForUser(id: Int) -> Subscription? {
         return registeredUsers["\(id)"]
     }
 
-    func removeToken(for userId: Int) {
+    func removeSubscription(for userId: Int) {
         registeredUsers["\(userId)"] = nil
-        UserDefaults.standard.set(registeredUsers, forKey: registeredUserAPNSTokensKey)
+        UserDefaults.standard.set(registeredUsers, forKey: registeredUsersKey)
     }
 }
 
 public protocol InfomaniakNotifiable {
+    /// Get the current Subscription for a given user
+    func subscriptionForUser(id: Int) async -> Subscription?
+    /// Register topics for a user
+    func updateTopicsIfNeeded(_ topics: [String], userApiFetcher: ApiFetcher) async
     /// Register the user for remote notifications using the given token
-    func registerUserForRemoteNotificationsIfNeeded(tokenData: Data, userApiFetcher: ApiFetcher) async
+    func updateRemoteNotificationsTokenIfNeeded(tokenData: Data, userApiFetcher: ApiFetcher) async
     /// After logging out manually remove the token for a given user
-    func removeStoredToken(for userId: Int) async
+    func removeStoredTokenFor(userId: Int) async
 }
 
 public class InfomaniakNotifications: InfomaniakNotifiable {
-    let userNotificationTokensStore = UserNotificationTokenStore()
+    let userSubscriptionsStore = UserSubscriptionStore()
 
     public init() {}
 
-    func registerUserForRemoteNotificationsIfNeeded(apnsToken: String, userApiFetcher: ApiFetcher) async {
+    func registerAndSave(newSubscription: Subscription, userApiFetcher: ApiFetcher) async {
         guard let userId = userApiFetcher.currentToken?.userId else {
             return
         }
 
-        let existingToken = await userNotificationTokensStore.apnsTokenForUser(id: userId)
-        guard apnsToken != existingToken else {
+        guard !newSubscription.token.isEmpty else {
+            // We will send topics when we get an APNS token
+            await userSubscriptionsStore.saveSubscriptionForUser(id: userId, subscription: newSubscription)
             return
         }
 
         do {
-            let success = try await userApiFetcher.registerForNotifications(registrationInfos: RegistrationInfos(token: apnsToken))
+            let success = try await userApiFetcher
+                .registerForNotifications(registrationInfos: RegistrationInfos(token: newSubscription.token,
+                                                                               topics: newSubscription.topics))
             if success {
-                await userNotificationTokensStore.registerUser(id: userId, apnsToken: apnsToken)
+                await userSubscriptionsStore.saveSubscriptionForUser(id: userId, subscription: newSubscription)
             }
         } catch {
-            // Fail silently, will be retried next time registerUserForRemoteNotificationsIfNeeded is called
+            // Fail silently, will be retried next time registerAndSave is called
         }
     }
 
-    public func registerUserForRemoteNotificationsIfNeeded(tokenData: Data, userApiFetcher: ApiFetcher) async {
+    public func subscriptionForUser(id: Int) async -> Subscription? {
+        return await userSubscriptionsStore.subscriptionForUser(id: id)
+    }
+
+    public func updateTopicsIfNeeded(_ topics: [String], userApiFetcher: ApiFetcher) async {
+        guard let userId = userApiFetcher.currentToken?.userId else {
+            return
+        }
+
+        let existingSubscription = await userSubscriptionsStore.subscriptionForUser(id: userId)
+        guard existingSubscription?.topics != topics else { return }
+
+        let newSubscription = Subscription(token: existingSubscription?.token ?? "", topics: topics)
+        await registerAndSave(newSubscription: newSubscription, userApiFetcher: userApiFetcher)
+    }
+
+    public func updateRemoteNotificationsTokenIfNeeded(tokenData: Data, userApiFetcher: ApiFetcher) async {
+        guard let userId = userApiFetcher.currentToken?.userId else {
+            return
+        }
+
         let tokenParts = tokenData.map { data in String(format: "%02.2hhx", data) }
         let apnsToken = tokenParts.joined()
 
-        await registerUserForRemoteNotificationsIfNeeded(apnsToken: apnsToken, userApiFetcher: userApiFetcher)
+        let existingSubscription = await userSubscriptionsStore.subscriptionForUser(id: userId)
+        guard existingSubscription?.token != apnsToken else { return }
+
+        let newSubscription = Subscription(token: apnsToken, topics: existingSubscription?.topics ?? [])
+        await registerAndSave(newSubscription: newSubscription, userApiFetcher: userApiFetcher)
     }
 
-    public func removeStoredToken(for userId: Int) async {
-        await userNotificationTokensStore.removeToken(for: userId)
+    public func removeStoredTokenFor(userId: Int) async {
+        await userSubscriptionsStore.removeSubscription(for: userId)
     }
 }
