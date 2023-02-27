@@ -49,13 +49,17 @@ actor UserSubscriptionStore {
         }
     }
 
-    func saveSubscriptionForUser(id: Int, subscription: Subscription) {
-        registeredUsers["\(id)"] = subscription
+    func saveRegisteredUsers() {
         var rawRegisteredUsers = [String: Data]()
         for registeredUser in registeredUsers {
             rawRegisteredUsers[registeredUser.key] = try? jsonEncoder.encode(registeredUser.value)
         }
         UserDefaults.standard.set(rawRegisteredUsers, forKey: registeredUsersKey)
+    }
+
+    func saveSubscriptionForUser(id: Int, subscription: Subscription) {
+        registeredUsers["\(id)"] = subscription
+        saveRegisteredUsers()
     }
 
     func subscriptionForUser(id: Int) -> Subscription? {
@@ -64,7 +68,7 @@ actor UserSubscriptionStore {
 
     func removeSubscription(for userId: Int) {
         registeredUsers["\(userId)"] = nil
-        UserDefaults.standard.set(registeredUsers, forKey: registeredUsersKey)
+        saveRegisteredUsers()
     }
 }
 
