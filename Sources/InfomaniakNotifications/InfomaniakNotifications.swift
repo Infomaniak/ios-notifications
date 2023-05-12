@@ -35,10 +35,17 @@ public extension ApiFetcher {
 actor UserSubscriptionStore {
     private let registeredUsersKey = "registeredUsers"
     private let jsonEncoder = JSONEncoder()
+    private let userDefaults: UserDefaults
     var registeredUsers = [String: Subscription]()
 
-    init() {
-        guard let registeredUsersData = UserDefaults.standard.dictionary(forKey: registeredUsersKey) as? [String: Data]
+    init(appGroup: String?) {
+        if let appGroup,
+            let appGroupDefaults = UserDefaults(suiteName: appGroup) {
+            userDefaults = appGroupDefaults
+        } else {
+            userDefaults = UserDefaults.standard
+        }
+        guard let registeredUsersData = userDefaults.dictionary(forKey: registeredUsersKey) as? [String: Data]
         else { return }
         let jsonDecoder = JSONDecoder()
 
@@ -54,7 +61,7 @@ actor UserSubscriptionStore {
         for registeredUser in registeredUsers {
             rawRegisteredUsers[registeredUser.key] = try? jsonEncoder.encode(registeredUser.value)
         }
-        UserDefaults.standard.set(rawRegisteredUsers, forKey: registeredUsersKey)
+        userDefaults.set(rawRegisteredUsers, forKey: registeredUsersKey)
     }
 
     func saveSubscriptionForUser(id: Int, subscription: Subscription) {
@@ -84,9 +91,11 @@ public protocol InfomaniakNotifiable {
 }
 
 public class InfomaniakNotifications: InfomaniakNotifiable {
-    let userSubscriptionsStore = UserSubscriptionStore()
+    let userSubscriptionsStore: UserSubscriptionStore
 
-    public init() {}
+    public init(appGroup: String? = nil) {
+        self.userSubscriptionsStore = UserSubscriptionStore(appGroup: appGroup)
+    }
 
     func registerAndSave(newSubscription: Subscription, userApiFetcher: ApiFetcher) async {
         guard let userId = userApiFetcher.currentToken?.userId else {
