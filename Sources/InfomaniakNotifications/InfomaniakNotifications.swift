@@ -40,7 +40,7 @@ actor UserSubscriptionStore {
 
     init(appGroup: String?) {
         if let appGroup,
-            let appGroupDefaults = UserDefaults(suiteName: appGroup) {
+           let appGroupDefaults = UserDefaults(suiteName: appGroup) {
             userDefaults = appGroupDefaults
         } else {
             userDefaults = UserDefaults.standard
@@ -85,16 +85,23 @@ public protocol InfomaniakNotifiable {
     /// Register topics for a user
     func updateTopicsIfNeeded(_ topics: [String], userApiFetcher: ApiFetcher) async
     /// Register the user for remote notifications using the given token
-    func updateRemoteNotificationsTokenIfNeeded(tokenData: Data, userApiFetcher: ApiFetcher) async
+    func updateRemoteNotificationsToken(tokenData: Data, userApiFetcher: ApiFetcher, updatePolicy: TokenUpdatePolicy) async
     /// After logging out manually remove the token for a given user
     func removeStoredTokenFor(userId: Int) async
+}
+
+public enum TokenUpdatePolicy {
+    /// Always send the token and topics to the server
+    case always
+    /// Send the token and topics to the server only if they were modified
+    case ifModified
 }
 
 public class InfomaniakNotifications: InfomaniakNotifiable {
     let userSubscriptionsStore: UserSubscriptionStore
 
     public init(appGroup: String? = nil) {
-        self.userSubscriptionsStore = UserSubscriptionStore(appGroup: appGroup)
+        userSubscriptionsStore = UserSubscriptionStore(appGroup: appGroup)
     }
 
     func registerAndSave(newSubscription: Subscription, userApiFetcher: ApiFetcher) async {
@@ -136,7 +143,11 @@ public class InfomaniakNotifications: InfomaniakNotifiable {
         await registerAndSave(newSubscription: newSubscription, userApiFetcher: userApiFetcher)
     }
 
-    public func updateRemoteNotificationsTokenIfNeeded(tokenData: Data, userApiFetcher: ApiFetcher) async {
+    public func updateRemoteNotificationsToken(
+        tokenData: Data,
+        userApiFetcher: ApiFetcher,
+        updatePolicy: TokenUpdatePolicy
+    ) async {
         guard let userId = userApiFetcher.currentToken?.userId else {
             return
         }
@@ -145,7 +156,8 @@ public class InfomaniakNotifications: InfomaniakNotifiable {
         let apnsToken = tokenParts.joined()
 
         let existingSubscription = await userSubscriptionsStore.subscriptionForUser(id: userId)
-        guard existingSubscription?.token != apnsToken else { return }
+
+        if updatePolicy == .ifModified && existingSubscription?.token == apnsToken { return }
 
         let newSubscription = Subscription(token: apnsToken, topics: existingSubscription?.topics ?? [])
         await registerAndSave(newSubscription: newSubscription, userApiFetcher: userApiFetcher)
