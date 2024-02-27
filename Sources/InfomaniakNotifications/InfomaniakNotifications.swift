@@ -28,7 +28,7 @@ public extension Endpoint {
 
 public extension ApiFetcher {
     func registerForNotifications(registrationInfos: RegistrationInfos) async throws -> Bool {
-        try await perform(request: authenticatedRequest(.registerDevice, method: .post, parameters: registrationInfos)).data
+        try await perform(request: authenticatedRequest(.registerDevice, method: .post, parameters: registrationInfos))
     }
 }
 
