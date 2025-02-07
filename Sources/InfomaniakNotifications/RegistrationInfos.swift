@@ -22,7 +22,7 @@ import UIKit
 import Foundation
 #endif
 
-public struct RegistrationInfos: Codable {
+struct RegistrationInfos: Codable {
     var os = "ios"
     var token: String
     #if canImport(UIKit)

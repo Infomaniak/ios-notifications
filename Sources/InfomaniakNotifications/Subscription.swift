@@ -18,7 +18,7 @@
 
 import Foundation
 
-public struct Subscription: Codable {
+public struct Subscription: Codable, Sendable {
     public let token: String
     public let topics: [String]
 }
