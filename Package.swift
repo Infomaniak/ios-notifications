@@ -15,7 +15,7 @@ let package = Package(
             targets: ["InfomaniakNotifications"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/Infomaniak/ios-core", .upToNextMajor(from: "15.0.0")),
+        .package(url: "https://github.com/Infomaniak/ios-core", .upToNextMajor(from: "16.0.0")),
     ],
     targets: [
         .target(
