@@ -1,6 +1,6 @@
 /*
  Infomaniak Notifications - iOS
- Copyright (C) 2023 Infomaniak Network SA
+ Copyright (C) 2025 Infomaniak Network SA
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -16,37 +16,21 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#if canImport(UIKit)
-import UIKit
-#else
 import Foundation
-#endif
 
-struct RegistrationInfos: Encodable {
-    let os = "ios"
-    let token: String
-    let model: String
-    let name: String
-    let isSandboxed: Bool
-    var topics: [Topic]
+public struct Topic: ExpressibleByStringLiteral, Sendable, Codable, Hashable, Equatable {
+    let rawValue: String
 
-    @MainActor
-    init(token: String, topics: [Topic]) {
-        self.topics = topics
-        self.token = token
+    public init(stringLiteral value: StringLiteralType) {
+        rawValue = value
+    }
 
-        #if canImport(UIKit)
-        model = UIDevice().model
-        name = UIDevice().name
-        #else
-        model = "Mac"
-        name = ProcessInfo().hostName
-        #endif
+    public init(rawValue: String) {
+        self.rawValue = rawValue
+    }
 
-        #if DEBUG
-        isSandboxed = true
-        #else
-        isSandboxed = false
-        #endif
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
     }
 }

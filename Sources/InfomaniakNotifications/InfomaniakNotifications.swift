@@ -83,7 +83,7 @@ public protocol InfomaniakNotifiable {
     /// Get the current Subscription for a given user
     func subscriptionForUser(id: Int) async -> Subscription?
     /// Register topics for a user
-    func updateTopicsIfNeeded(_ topics: [String], userApiFetcher: ApiFetcher) async
+    func updateTopicsIfNeeded(_ topics: [Topic], userApiFetcher: ApiFetcher) async
     /// Register the user for remote notifications using the given token
     func updateRemoteNotificationsToken(tokenData: Data, userApiFetcher: ApiFetcher, updatePolicy: TokenUpdatePolicy) async
     /// After logging out manually remove the token for a given user
@@ -116,9 +116,8 @@ public class InfomaniakNotifications: InfomaniakNotifiable {
         }
 
         do {
-            let success = try await userApiFetcher
-                .registerForNotifications(registrationInfos: RegistrationInfos(token: newSubscription.token,
-                                                                               topics: newSubscription.topics))
+            let registrationInfos = await RegistrationInfos(token: newSubscription.token, topics: newSubscription.topics)
+            let success = try await userApiFetcher.registerForNotifications(registrationInfos: registrationInfos)
             if success {
                 await userSubscriptionsStore.saveSubscriptionForUser(id: userId, subscription: newSubscription)
             }
@@ -131,15 +130,17 @@ public class InfomaniakNotifications: InfomaniakNotifiable {
         return await userSubscriptionsStore.subscriptionForUser(id: id)
     }
 
-    public func updateTopicsIfNeeded(_ topics: [String], userApiFetcher: ApiFetcher) async {
+    public func updateTopicsIfNeeded(_ topics: [Topic], userApiFetcher: ApiFetcher) async {
         guard let userId = userApiFetcher.currentToken?.userId else {
             return
         }
 
-        let existingSubscription = await userSubscriptionsStore.subscriptionForUser(id: userId)
-        guard existingSubscription?.topics != topics else { return }
+        let uniqueTopics = Array(Set(topics))
 
-        let newSubscription = Subscription(token: existingSubscription?.token ?? "", topics: topics)
+        let existingSubscription = await userSubscriptionsStore.subscriptionForUser(id: userId)
+        guard existingSubscription?.topics != uniqueTopics else { return }
+
+        let newSubscription = Subscription(token: existingSubscription?.token ?? "", topics: uniqueTopics)
         await registerAndSave(newSubscription: newSubscription, userApiFetcher: userApiFetcher)
     }
 
