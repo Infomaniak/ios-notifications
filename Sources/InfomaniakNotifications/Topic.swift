@@ -33,4 +33,9 @@ public struct Topic: ExpressibleByStringLiteral, Sendable, Codable, Hashable, Eq
         var container = encoder.singleValueContainer()
         try container.encode(rawValue)
     }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        rawValue = try container.decode(String.self)
+    }
 }
