@@ -39,3 +39,11 @@ public struct Topic: ExpressibleByStringLiteral, Sendable, Codable, Hashable, Eq
         rawValue = try container.decode(String.self)
     }
 }
+
+extension Collection where Element == Topic {
+    func isEqualToTopics(_ other: [Topic]) -> Bool {
+        let sortedSelf = sorted { $0.rawValue < $1.rawValue }
+        let sortedOther = other.sorted { $0.rawValue < $1.rawValue }
+        return sortedSelf == sortedOther
+    }
+}

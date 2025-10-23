@@ -135,12 +135,13 @@ public class InfomaniakNotifications: InfomaniakNotifiable {
             return
         }
 
-        let uniqueTopics = Array(Set(topics))
+        let newUniqueTopics = Array(Set(topics))
 
         let existingSubscription = await userSubscriptionsStore.subscriptionForUser(id: userId)
-        guard existingSubscription?.topics != uniqueTopics else { return }
 
-        let newSubscription = Subscription(token: existingSubscription?.token ?? "", topics: uniqueTopics)
+        guard !(existingSubscription?.topics ?? []).isEqualToTopics(newUniqueTopics) else { return }
+
+        let newSubscription = Subscription(token: existingSubscription?.token ?? "", topics: newUniqueTopics)
         await registerAndSave(newSubscription: newSubscription, userApiFetcher: userApiFetcher)
     }
 
