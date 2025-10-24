@@ -22,20 +22,31 @@ import UIKit
 import Foundation
 #endif
 
-struct RegistrationInfos: Codable {
-    var os = "ios"
-    var token: String
-    #if canImport(UIKit)
-    var model = UIDevice().model
-    var name = UIDevice().name
-    #else
-    var model = "Mac"
-    var name = ProcessInfo().hostName
-    #endif
-    #if DEBUG
-    var isSandboxed = true
-    #else
-    var isSandboxed = false
-    #endif
-    var topics: [String]
+struct RegistrationInfos: Encodable {
+    let os = "ios"
+    let token: String
+    let model: String
+    let name: String
+    let isSandboxed: Bool
+    var topics: [Topic]
+
+    @MainActor
+    init(token: String, topics: [Topic]) {
+        self.topics = topics
+        self.token = token
+
+        #if canImport(UIKit)
+        model = UIDevice().model
+        name = UIDevice().name
+        #else
+        model = "Mac"
+        name = ProcessInfo().hostName
+        #endif
+
+        #if DEBUG
+        isSandboxed = true
+        #else
+        isSandboxed = false
+        #endif
+    }
 }

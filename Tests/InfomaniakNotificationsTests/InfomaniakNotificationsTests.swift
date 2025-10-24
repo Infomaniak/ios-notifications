@@ -18,6 +18,7 @@
 
 import InfomaniakCore
 import InfomaniakDI
+import InfomaniakLogin
 @testable import InfomaniakNotifications
 import XCTest
 
@@ -43,9 +44,9 @@ final class InfomaniakNotificationsTests: XCTestCase {
     override class func setUp() {
         let factory = Factory(type: InfomaniakNetworkLogin.self) { _, _ in
             // We don't need InfomaniakNetworkLogin but it is injected in the ApiFetcher
-            InfomaniakNetworkLogin(clientId: "")
+            InfomaniakNetworkLogin(config: .init(clientId: ""))
         }
-        try! SimpleResolver.sharedResolver.store(factory: factory)
+        SimpleResolver.sharedResolver.store(factory: factory)
     }
 
     override func setUp() {
@@ -54,7 +55,7 @@ final class InfomaniakNotificationsTests: XCTestCase {
     }
 
     func testApiRegistration() async throws {
-        let registrationInfos = RegistrationInfos(token: InfomaniakNotificationsTests.fakeAPNSToken, topics: ["test1"])
+        let registrationInfos = await RegistrationInfos(token: InfomaniakNotificationsTests.fakeAPNSToken, topics: ["test1"])
         let registrationResult = try await apiFetcher.registerForNotifications(registrationInfos: registrationInfos)
         XCTAssertTrue(registrationResult, "Registration shouldn't fail")
     }
@@ -70,10 +71,10 @@ final class InfomaniakNotificationsTests: XCTestCase {
             .subscriptionForUser(id: apiFetcher.currentToken!.userId)
         XCTAssertNotNil(registeredToken, "Registered token shouldn't be nil")
     }
-    
+
     func testUpdateTopics() async throws {
         let notificationsService = InfomaniakNotifications()
-        let testTopics = ["topic1", "topic2"]
+        let testTopics: [Topic] = ["topic1", "topic2"]
         await notificationsService.removeStoredTokenFor(userId: apiFetcher.currentToken!.userId)
 
         await notificationsService.updateTopicsIfNeeded(testTopics, userApiFetcher: apiFetcher)
