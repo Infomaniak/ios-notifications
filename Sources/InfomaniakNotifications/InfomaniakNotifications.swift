@@ -97,7 +97,7 @@ public enum TokenUpdatePolicy {
     case ifModified
 }
 
-public class InfomaniakNotifications: InfomaniakNotifiable {
+public struct InfomaniakNotifications: Sendable, InfomaniakNotifiable {
     let userSubscriptionsStore: UserSubscriptionStore
 
     public init(appGroup: String? = nil) {
