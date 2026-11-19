@@ -1,5 +1,5 @@
 {
-  "originHash" : "cae31052231ca1ae268952aede31925efb44969b5f444bde35f476a2de2e834c",
+  "originHash" : "3d72363f3f7935698883e77df84cbd41c180d946a9639a84a6c26958a7a6971c",
   "pins" : [
     {
       "identity" : "alamofire",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Infomaniak/ios-core",
       "state" : {
-        "revision" : "a2ccfeadb409fb6664213dc534f27ea5857ede72",
-        "version" : "21.0.0"
+        "revision" : "211cbcb3e8aad90fa6ae7bc92b1b9d58d6cb9f8c",
+        "version" : "22.0.0"
       }
     },
     {
